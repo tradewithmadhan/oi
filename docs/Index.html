@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time OI Change Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@^1.0.0"></script>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        #chart-container {
+            width: 90%;
+            height: 90%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Real-Time OI Change Chart</h1>
+    <div id="chart-container">
+        <canvas id="lineChart"></canvas>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('lineChart').getContext('2d');
+
+        const chartData = {
+            labels: [],
+            datasets: [
+                {
+                    label: 'OI Percentage Difference',
+                    data: [],
+                    borderColor: '#900C3F',
+                    fill: false
+                },
+                {
+                    label: 'OICH Percentage Difference',
+                    data: [],
+                    borderColor: '#FF0000',
+                    fill: false
+                }
+            ]
+        };
+
+        const config = {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Timestamp'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Percentage Difference'
+                        }
+                    }
+                }
+            }
+        };
+
+        const lineChart = new Chart(ctx, config);
+
+        async function fetchData() {
+            try {
+                console.log('Fetching data...');
+                const response = await fetch('spot_ltp_percentage_difference.csv');
+                const text = await response.text();
+                const rows = text.split('\n').slice(1); // Skip header
+
+                const timestamps = [];
+                const percentageDifferences = [];
+                const oichPercentageDifferences = [];
+
+                rows.forEach(row => {
+                    const cols = row.split(',');
+                    if (cols.length >= 4) {
+                        timestamps.push(moment(cols[0], 'YYYY-MM-DD HH:mm:ss').toDate());
+                        percentageDifferences.push(parseFloat(cols[2]));
+                        oichPercentageDifferences.push(parseFloat(cols[3]));
+                    }
+                });
+
+                chartData.labels = timestamps;
+                chartData.datasets[0].data = percentageDifferences;
+                chartData.datasets[1].data = oichPercentageDifferences;
+                lineChart.update();
+                console.log('Data updated:', {timestamps, percentageDifferences, oichPercentageDifferences});
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Fetch data every 10 seconds
+        setInterval(fetchData, 10000);
+
+        // Initial fetch
+        fetchData();
+    </script>
+</body>
+</html>
